@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, LogOut, Phone, Video, Download, Share2, Copy, Link2, CheckCircle, AlertCircle, Loader2, Shield, Users, MessageCircle, BookHeart, Mail, Sparkles, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { generateAndSaveCoupleCode, connectWithCode, initiateCall, subscribeToIncomingCalls, endCall, logoutUser, subscribeToMessages } from '../lib/firebase';
+import { generateAndSaveCoupleCode, connectWithCode, initiateCall, subscribeToIncomingCalls, endCall, logoutUser, subscribeToMessages, subscribeToMemories } from '../lib/firebase';
 import { canInstall, isStandalone, promptInstall, subscribeToInstallState } from '../lib/pwa';
 import ChatWindow from '../components/ChatWindow';
 import CallModal from '../components/CallModal';
 import Memories from '../components/Memories';
 import LoveNotes from '../components/LoveNotes';
 import DateIdeas from '../components/DateIdeas';
+import LiveCounter, { useElapsed, parseDateMs } from '../components/LiveCounter';
 
 type Tab = 'chat' | 'mem' | 'notes' | 'dates';
 
@@ -89,6 +90,23 @@ export default function DashboardPage() {
   };
 
   const days = firstDate ? Math.max(1, Math.floor((Date.now() - firstDate.getTime()) / 86400000)) : 0;
+
+  // Live counter start: earliest memory date if any, otherwise the first message.
+  const [earliestMemMs, setEarliestMemMs] = useState<number | null>(null);
+  useEffect(() => {
+    if (!user || !partnerId) return;
+    try {
+      return subscribeToMemories(user.uid, partnerId, (mems) => {
+        const ms = mems.map((m) => parseDateMs(m.date)).filter((t): t is number => t !== null);
+        setEarliestMemMs(ms.length ? Math.min(...ms) : null);
+      });
+    } catch {
+      return undefined;
+    }
+  }, [user, partnerId]);
+
+  const counterStart = earliestMemMs ?? firstDate?.getTime() ?? null;
+  const liveElapsed = useElapsed(counterStart);
 
   if (loading) return <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 flex items-center justify-center"><Loader2 className="w-8 h-8 text-pink-500 animate-spin" /></div>;
   if (!user) return null;
@@ -172,7 +190,11 @@ export default function DashboardPage() {
               <div className="flex items-center justify-around text-center">
                 <div className="flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5 text-rose-500" /><div><p className="text-[10px] text-gray-500">Messages</p><p className="font-bold text-gray-800 text-xs">{msgCount}</p></div></div>
                 <div className="h-6 w-px bg-gray-200"></div>
-                <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-pink-500" /><div><p className="text-[10px] text-gray-500">Days</p><p className="font-bold text-gray-800 text-xs">{days}</p></div></div>
+                <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-pink-500" /><div><p className="text-[10px] text-gray-500">Together</p>{liveElapsed ? (
+                  <p className="font-mono tabular-nums font-bold text-rose-600 text-xs whitespace-nowrap">
+                    {liveElapsed.days}d {String(liveElapsed.hours).padStart(2, '0')}:{String(liveElapsed.minutes).padStart(2, '0')}:{String(liveElapsed.seconds).padStart(2, '0')}
+                  </p>
+                ) : (<p className="font-bold text-gray-800 text-xs">{days}</p>)}</div></div>
                 <div className="h-6 w-px bg-gray-200"></div>
                 <div className="flex items-center gap-1.5"><Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" /><div><p className="text-[10px] text-gray-500">Status</p><p className="font-bold text-green-600 text-xs">In Love</p></div></div>
               </div>

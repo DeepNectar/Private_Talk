@@ -1,6 +1,44 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, LogOut, Phone, Video, Copy, CheckCircle, AlertCircle, Loader2, Users, Send, Zap, ArrowLeft, MessageCircle, Download, Search, X, MoreHorizontal, Reply, BookHeart, Mail, Sparkles, Calendar, MailOpen, RefreshCw, Shield, Image as ImageIcon } from 'lucide-react';
+import LiveCounter, { useElapsed } from '../components/LiveCounter';
+
+function demoToMs(date: string): number | null {
+  if (!date) return null;
+  const t = new Date(date.length === 10 ? `${date}T00:00:00` : date).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+function DemoLiveCounter({ dates }: { dates: string[] }) {
+  const since = useMemo(() => {
+    const ms = dates.map(demoToMs).filter((v): v is number => !!v);
+    return ms.length ? Math.min(...ms) : null;
+  }, [dates]);
+  return <LiveCounter since={since} label="Together for" />;
+}
+
+function DemoElapsed({ date }: { date: string }) {
+  const e = useElapsed(demoToMs(date));
+  if (!e) return null;
+  return (
+    <p className="text-[11px] font-mono tabular-nums text-rose-500 flex items-center gap-1 mt-1">
+      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shrink-0" />
+      {e.days > 0 ? `${e.days}d ` : ''}
+      {String(e.hours).padStart(2, '0')}:{String(e.minutes).padStart(2, '0')}:{String(e.seconds).padStart(2, '0')} ago
+    </p>
+  );
+}
+
+/** Live "Xd HH:MM:SS" clock for the demo stats bar (counts from the first memory / demo start). */
+function DemoLiveClock() {
+  const e = useElapsed(demoToMs('2024-02-14'));
+  if (!e) return <p className="font-bold text-gray-800 text-sm">—</p>;
+  return (
+    <p className="font-mono tabular-nums font-bold text-rose-600 text-sm whitespace-nowrap">
+      {e.days}d {String(e.hours).padStart(2, '0')}:{String(e.minutes).padStart(2, '0')}:{String(e.seconds).padStart(2, '0')}
+    </p>
+  );
+}
 
 interface Msg { id: string; text: string; sender: string; time: Date; own: boolean; }
 
@@ -163,7 +201,7 @@ export default function DemoPage() {
           <div className="flex items-center justify-around text-center">
             <div className="flex items-center gap-2"><MessageCircle className="w-4 h-4 text-rose-500" /><div><p className="text-xs text-gray-500">Messages</p><p className="font-bold text-gray-800 text-sm">{msgs.length}</p></div></div>
             <div className="h-8 w-px bg-gray-200"></div>
-            <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-pink-500" /><div><p className="text-xs text-gray-500">Days</p><p className="font-bold text-gray-800 text-sm">{msgs.length > 0 ? Math.max(1, Math.floor((Date.now() - msgs[0].time.getTime()) / 86400000)) : 0}</p></div></div>
+            <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-pink-500" /><div><p className="text-xs text-gray-500">Together</p><DemoLiveClock /></div></div>
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="flex items-center gap-2"><Heart className="w-4 h-4 text-red-500 fill-red-500" /><div><p className="text-xs text-gray-500">Status</p><p className="font-bold text-green-600 text-sm">In Love</p></div></div>
           </div>
@@ -249,11 +287,13 @@ export default function DemoPage() {
                 </div>
               )}
               <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                <DemoLiveCounter dates={mems.map(m => m.date)} />
                 {!mems.length ? <div className="text-center py-12"><BookHeart className="w-12 h-12 text-rose-300 mx-auto mb-2" /><p className="text-gray-400 text-sm">No memories yet 💕</p></div> : mems.map(m => (
                   <div key={m.id} className="bg-white rounded-xl border border-pink-100 p-4">
                     <div className="flex justify-between items-start mb-1"><h3 className="font-semibold text-gray-800 flex items-center gap-1"><Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />{m.t}</h3><button onClick={() => setMems(mems.filter(x => x.id !== m.id))} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button></div>
                     {m.d && <p className="text-sm text-gray-600 mb-2">{m.d}</p>}
                     <p className="text-xs text-gray-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(m.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <DemoElapsed date={m.date} />
                   </div>
                 ))}
               </div>

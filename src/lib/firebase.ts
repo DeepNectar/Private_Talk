@@ -200,6 +200,20 @@ export function subscribeToMessages(
   });
 }
 
+// ============ MEMORIES (live counter source) ============
+
+export function subscribeToMemories(
+  userId: string,
+  partnerId: string,
+  callback: (memories: Array<{ id: string; title: string; date: string }>) => void
+) {
+  const chatId = [userId, partnerId].sort().join('_');
+  return onSnapshot(
+    query(collection(db, 'chats', chatId, 'memories'), orderBy('date', 'desc')),
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })))
+  );
+}
+
 // ============ CALL SIGNALING HELPERS ============
 
 function getCallDocId(userId1: string, userId2: string): string {
