@@ -8,15 +8,32 @@ export interface Elapsed {
   totalSeconds: number;
 }
 
+/** Parse a stored date string ("YYYY-MM-DD", ISO, or Firestore Timestamp-ish) into epoch ms. */
+export function parseDateMs(date: unknown): number | null {
+  if (date == null || date === '') return null;
+  // Firestore Timestamp objects expose toDate()
+  const anyDate = date as any;
+  if (typeof anyDate?.toDate === 'function') {
+    const t = anyDate.toDate().getTime();
+    return Number.isNaN(t) ? null : t;
+  }
+  if (typeof anyDate === 'number') return Number.isFinite(anyDate) ? anyDate : null;
+  if (typeof anyDate !== 'string') return null;
+  // "YYYY-MM-DD" would otherwise be parsed as UTC midnight — force local time.
+  const s = /^\d{4}-\d{2}-\d{2}$/.test(anyDate) ? `${anyDate}T00:00:00` : anyDate;
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
 /** Ticking live elapsed-time counter (days / hours / minutes / seconds) since `since`. */
 export function useElapsed(since: number | null): Elapsed | null {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!since) return;
+    // Always tick so the seconds stay live even when `since` changes between renders.
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [since]);
+  }, []);
 
   if (!since) return null;
   const diffMs = Math.max(0, now - since);

@@ -9,7 +9,7 @@ import CallModal from '../components/CallModal';
 import Memories from '../components/Memories';
 import LoveNotes from '../components/LoveNotes';
 import DateIdeas from '../components/DateIdeas';
-import LiveCounter, { useElapsed } from '../components/LiveCounter';
+import LiveCounter, { useElapsed, parseDateMs } from '../components/LiveCounter';
 
 type Tab = 'chat' | 'mem' | 'notes' | 'dates';
 
@@ -95,12 +95,14 @@ export default function DashboardPage() {
   const [earliestMemMs, setEarliestMemMs] = useState<number | null>(null);
   useEffect(() => {
     if (!user || !partnerId) return;
-    return subscribeToMemories(user.uid, partnerId, (mems) => {
-      const ms = mems
-        .map((m) => (m.date && m.date.length === 10 ? new Date(`${m.date}T00:00:00`) : new Date(m.date)).getTime())
-        .filter((t) => !Number.isNaN(t));
-      setEarliestMemMs(ms.length ? Math.min(...ms) : null);
-    });
+    try {
+      return subscribeToMemories(user.uid, partnerId, (mems) => {
+        const ms = mems.map((m) => parseDateMs(m.date)).filter((t): t is number => t !== null);
+        setEarliestMemMs(ms.length ? Math.min(...ms) : null);
+      });
+    } catch {
+      return undefined;
+    }
   }, [user, partnerId]);
 
   const counterStart = earliestMemMs ?? firstDate?.getTime() ?? null;
