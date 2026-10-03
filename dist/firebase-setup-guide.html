@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Setup Guide - LoveLink</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            padding: 40px 20px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .step {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(180deg, #667eea, #764ba2);
+        }
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        .step h2 {
+            font-size: 1.5em;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+        .step h3 {
+            font-size: 1.1em;
+            color: #4a5568;
+            margin: 20px 0 10px;
+            padding-left: 10px;
+            border-left: 3px solid #667eea;
+        }
+        .step p {
+            line-height: 1.8;
+            color: #4a5568;
+            margin-bottom: 12px;
+        }
+        .click-here {
+            display: inline-block;
+            background: #f0f4ff;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 8px 16px;
+            margin: 8px 0;
+            font-weight: 600;
+            color: #667eea;
+        }
+        .url-box {
+            background: #1a202c;
+            color: #68d391;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            margin: 10px 0;
+            word-break: break-all;
+            cursor: pointer;
+            position: relative;
+        }
+        .url-box:hover::after {
+            content: '📋 Click to copy';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a0aec0;
+            font-size: 0.8em;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            margin: 15px 0;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .code-block .key { color: #68d391; }
+        .code-block .value { color: #f6ad55; }
+        .code-block .comment { color: #718096; }
+        .warning {
+            background: #fffbeb;
+            border: 2px solid #f6ad55;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+        .warning::before {
+            content: '⚠️ ';
+            font-size: 1.2em;
+        }
+        .success {
+            background: #f0fff4;
+            border: 2px solid #68d391;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+        .success::before {
+            content: '✅ ';
+            font-size: 1.2em;
+        }
+        .info {
+            background: #ebf8ff;
+            border: 2px solid #63b3ed;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+        .info::before {
+            content: 'ℹ️ ';
+            font-size: 1.2em;
+        }
+        .visual-box {
+            background: #f7fafc;
+            border: 2px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .visual-box .mock-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 5px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        .visual-box .mock-button.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            box-shadow: none;
+        }
+        .visual-box .mock-input {
+            display: block;
+            width: 100%;
+            max-width: 400px;
+            margin: 10px auto;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: left;
+            color: #a0aec0;
+            font-size: 0.95em;
+        }
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .screenshot-mock {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .screenshot-mock .browser-bar {
+            background: #e2e8f0;
+            border-radius: 8px 8px 0 0;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: -20px -20px 15px -20px;
+            border-radius: 12px 12px 0 0;
+        }
+        .screenshot-mock .browser-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .screenshot-mock .browser-dot.red { background: #fc8181; }
+        .screenshot-mock .browser-dot.yellow { background: #f6e05e; }
+        .screenshot-mock .browser-dot.green { background: #68d391; }
+        .screenshot-mock .browser-url {
+            background: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: #718096;
+            margin-left: 10px;
+            flex: 1;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        tr:nth-child(even) { background: #f7fafc; }
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 10px 0;
+            padding-left: 35px;
+            position: relative;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .checklist li::before {
+            content: '☐';
+            position: absolute;
+            left: 5px;
+            font-size: 1.3em;
+            color: #667eea;
+        }
+        .nav {
+            position: sticky;
+            top: 20px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .nav h3 {
+            font-size: 0.9em;
+            color: #718096;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .nav-links a {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #f0f4ff;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        .emoji-icon {
+            font-size: 1.5em;
+            margin-right: 8px;
+        }
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8em; }
+            .step { padding: 20px; }
+            .code-block { font-size: 0.8em; padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>💕 Firebase Setup Guide</h1>
+            <p>Complete step-by-step instructions to get your LoveLink app running</p>
+            <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">⏱️ Estimated time: 10-15 minutes</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <h3>Quick Navigation</h3>
+            <div class="nav-links">
+                <a href="#step1">1. Create Project</a>
+                <a href="#step2">2. Register App</a>
+                <a href="#step3">3. Copy Config</a>
+                <a href="#step4">4. Enable Auth</a>
+                <a href="#step5">5. Create Database</a>
+                <a href="#step6">6. Create .env</a>
+                <a href="#step7">7. Deploy</a>
+                <a href="#step8">8. Security Rules</a>
+            </div>
+        </div>
+
+        <!-- STEP 1 -->
+        <div class="step" id="step1">
+            <div class="step-number">1</div>
+            <h2>🌐 Go to Firebase Console</h2>
+            
+            <p>Open your browser and go to this URL:</p>
+            <div class="url-box" onclick="copyText('https://console.firebase.google.com')">
+                https://console.firebase.google.com
+            </div>
+
+            <div class="info">
+                You need a <strong>Google account</strong> (Gmail). If you're not signed in, it will ask you to sign in first.
+            </div>
+
+            <h3>What you'll see:</h3>
+            <div class="screenshot-mock">
+                <div class="browser-bar">
+                    <div class="browser-dot red"></div>
+                    <div class="browser-dot yellow"></div>
+                    <div class="browser-dot green"></div>
+                    <div class="browser-url">console.firebase.google.com</div>
+                </div>
+                <div style="text-align: center; padding: 30px;">
+                    <p style="font-size: 1.3em; font-weight: bold; color: #2d3748;">Firebase Console</p>
+                    <p style="color: #718096; margin: 15px 0;">You'll see your projects (or empty if first time)</p>
+                    <div style="margin-top: 20px;">
+                        <span class="mock-button">+ Add Project</span>
+                    </div>
+                    <p style="color: #667eea; margin-top: 15px; font-weight: 600;">↑ Click this button!</p>
+                </div>
+            </div>
+
+            <h3>Click the big button:</h3>
+            <div class="click-here">+ Add Project</div>
+            <p style="margin-left: 10px;">(It might also say "Create a project" — same thing)</p>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step" id="step2">
+            <div class="step-number">2</div>
+            <h2>📝 Name Your Project</h2>
+
+            <p>A popup will appear asking for a project name.</p>
+
+            <h3>What to enter:</h3>
+            <div class="visual-box">
+                <p style="color: #718096; margin-bottom: 10px;">Project name</p>
+                <div class="mock-input">lovelink-app</div>
+                <p style="color: #a0aec0; font-size: 0.85em; margin-top: 10px;">You can use any name. "lovelink-app" is fine.</p>
+            </div>
+
+            <h3>Then click:</h3>
+            <div class="visual-box">
+                <span class="mock-button">Continue</span>
+            </div>
+
+            <h3>Next screen - Google Analytics:</h3>
+            <p>You'll see a toggle for Google Analytics.</p>
+            
+            <div class="warning">
+                <strong>Turn it OFF!</strong> You don't need analytics for this app. Toggle the switch so it's grey/disabled.
+            </div>
+
+            <div class="visual-box">
+                <p style="margin-bottom: 10px;">Enable Google Analytics for your project?</p>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <span style="color: #718096;">Off</span>
+                    <div style="width: 50px; height: 28px; background: #cbd5e0; border-radius: 14px; position: relative;">
+                        <div style="width: 22px; height: 22px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                    </div>
+                    <span style="color: #a0aec0;">On</span>
+                </div>
+                <p style="color: #e53e3e; font-size: 0.85em; margin-top: 10px;">↑ Make sure it's OFF (grey, not blue)</p>
+            </div>
+
+            <p>Then click:</p>
+            <div class="visual-box">
+                <span class="mock-button">Continue</span>
+                <span style="margin: 0 10px;">→</span>
+                <span class="mock-button">Create project</span>
+            </div>
+
+            <div class="info">
+                Wait about 30 seconds while Firebase creates your project. You'll see a loading animation. When it's done, click <strong>"Continue"</strong>.
+            </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step" id="step3">
+            <div class="step-number">3</div>
+            <h2>🌐 Register a Web App</h2>
+
+            <p>Now you're on your project's overview page. You need to add a web app.</p>
+
+            <h3>Look for these icons in the center of the page:</h3>
+            <div class="visual-box">
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                    <div style="text-align: center;">
+                        <div style="width: 50px; height: 50px; background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-size: 1.5em;">📱</span>
+                        </div>
+                        <p style="font-size: 0.75em; color: #718096; margin-top: 5px;">iOS</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 50px; height: 50px; background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-size: 1.5em;">🤖</span>
+                        </div>
+                        <p style="font-size: 0.75em; color: #718096; margin-top: 5px;">Android</p>
+                    </div>
+                    <div style="text-align: center; position: relative;">
+                        <div style="width: 50px; height: 50px; background: #f0f4ff; border: 3px solid #667eea; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-size: 1.2em; font-weight: bold; color: #667eea;">&lt;/&gt;</span>
+                        </div>
+                        <p style="font-size: 0.75em; color: #667eea; margin-top: 5px; font-weight: bold;">WEB ← CLICK THIS</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 50px; height: 50px; background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <span style="font-size: 1.5em;">🎮</span>
+                        </div>
+                        <p style="font-size: 0.75em; color: #718096; margin-top: 5px;">Unity</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="click-here">Click the </> icon (Web)</div>
+
+            <h3>Register your app:</h3>
+            <div class="visual-box">
+                <p style="color: #718096; margin-bottom: 10px;">App nickname</p>
+                <div class="mock-input">LoveLink Web</div>
+                <p style="color: #a0aec0; font-size: 0.85em; margin-top: 5px;">Any name works. This is just for your reference.</p>
+                
+                <div style="margin-top: 20px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <p style="color: #718096; margin-bottom: 8px;">☐ Also set up Firebase Hosting for this app</p>
+                    <p style="color: #e53e3e; font-size: 0.85em;">↑ Leave this UNCHECKED! We use Vercel, not Firebase Hosting.</p>
+                </div>
+            </div>
+
+            <p>Then click:</p>
+            <div class="visual-box">
+                <span class="mock-button">Register app</span>
+            </div>
+        </div>
+
+        <!-- STEP 4 -->
+        <div class="step" id="step4">
+            <div class="step-number">4</div>
+            <h2>📋 Copy Your Config Values (MOST IMPORTANT!)</h2>
+
+            <p>After clicking "Register app", you'll see a screen with your Firebase configuration. <strong>This is the most important step!</strong></p>
+
+            <h3>You'll see something like this:</h3>
+            <div class="screenshot-mock">
+                <div class="browser-bar">
+                    <div class="browser-dot red"></div>
+                    <div class="browser-dot yellow"></div>
+                    <div class="browser-dot green"></div>
+                    <div class="browser-url">console.firebase.google.com/project/lovelink-app</div>
+                </div>
+                <div style="padding: 20px;">
+                    <p style="font-weight: bold; color: #2d3748; margin-bottom: 15px;">Here's your Firebase configuration</p>
+                    <div class="code-block"><span class="comment">// Copy ALL of this ↓↓↓</span>
+<span class="key">const</span> firebaseConfig = {
+  <span class="key">apiKey</span>: <span class="value">"AIzaSyBxxxxxxxxxxxxxxxxxxxx"</span>,
+  <span class="key">authDomain</span>: <span class="value">"lovelink-app.firebaseapp.com"</span>,
+  <span class="key">projectId</span>: <span class="value">"lovelink-app"</span>,
+  <span class="key">storageBucket</span>: <span class="value">"lovelink-app.appspot.com"</span>,
+  <span class="key">messagingSenderId</span>: <span class="value">"123456789012"</span>,
+  <span class="key">appId</span>: <span class="value">"1:123456789012:web:abc123def456ghi"</span>
+};</div>
+                </div>
+            </div>
+
+            <div class="warning">
+                <strong>COPY ALL 6 VALUES!</strong> You need every single one. Don't skip any.
+            </div>
+
+            <h3>Here's what each value means:</h3>
+            <div class="table-wrapper">
+                <table>
+                    <tr>
+                        <th>Value Name</th>
+                        <th>What it looks like</th>
+                        <th>Where it goes in .env</th>
+                    </tr>
+                    <tr>
+                        <td><code>apiKey</code></td>
+                        <td><code>AIzaSyB...</code> (long string)</td>
+                        <td><code>VITE_FIREBASE_API_KEY</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>authDomain</code></td>
+                        <td><code>your-project.firebaseapp.com</code></td>
+                        <td><code>VITE_FIREBASE_AUTH_DOMAIN</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>projectId</code></td>
+                        <td><code>your-project</code> (short name)</td>
+                        <td><code>VITE_FIREBASE_PROJECT_ID</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>storageBucket</code></td>
+                        <td><code>your-project.appspot.com</code></td>
+                        <td><code>VITE_FIREBASE_STORAGE_BUCKET</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>messagingSenderId</code></td>
+                        <td><code>123456789012</code> (12 digits)</td>
+                        <td><code>VITE_FIREBASE_MESSAGING_SENDER_ID</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>appId</code></td>
+                        <td><code>1:123456:web:abc123</code></td>
+                        <td><code>VITE_FIREBASE_APP_ID</code></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="info">
+                <strong>Can't find this screen later?</strong> Go to: Firebase Console → ⚙️ Settings (gear icon, top left) → "General" tab → scroll down to "Your apps" section → click your web app → you'll see the config there.
+            </div>
+
+            <p>Click <strong>"Next"</strong> and then <strong>"Continue to console"</strong> when done.</p>
+        </div>
+
+        <!-- STEP 5 -->
+        <div class="step" id="step5">
+            <div class="step-number">5</div>
+            <h2>🔐 Enable Email/Password Authentication</h2>
+
+            <p>Now you need to enable login with email and password.</p>
+
+            <h3>Navigate to Authentication:</h3>
+            <div class="visual-box">
+                <div style="text-align: left; max-width: 300px; margin: 0 auto;">
+                    <div style="padding: 10px 15px; background: #f7fafc; border-radius: 8px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px;">
+                        <span>🏠</span> <span style="color: #718096;">Project Overview</span>
+                    </div>
+                    <div style="padding: 10px 15px; background: #f0f4ff; border-radius: 8px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; border: 2px solid #667eea;">
+                        <span>🔨</span> <span style="color: #667eea; font-weight: bold;">Build</span> <span style="color: #a0aec0; margin-left: auto;">← Click</span>
+                    </div>
+                    <div style="padding: 10px 15px 10px 45px; background: #f0f4ff; border-radius: 8px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; border: 2px solid #667eea;">
+                        <span>🔑</span> <span style="color: #667eea; font-weight: bold;">Authentication</span> <span style="color: #a0aec0; margin-left: auto;">← Click</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3>On the Authentication page:</h3>
+            <ol style="padding-left: 20px; line-height: 2.2;">
+                <li>You'll see a big "Get started" button → <strong>Click it</strong></li>
+                <li>You'll see tabs: "Sign-in method", "Users", etc.</li>
+                <li>Make sure you're on the <strong>"Sign-in method"</strong> tab</li>
+                <li>Look for <strong>"Email/Password"</strong> in the list</li>
+                <li><strong>Click on it</strong></li>
+            </ol>
+
+            <div class="visual-box">
+                <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                    <div style="padding: 15px; background: white; border: 2px solid #e2e8f0; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 1.3em;">✉️</span>
+                            <div>
+                                <p style="font-weight: bold; color: #2d3748;">Email/Password</p>
+                                <p style="font-size: 0.8em; color: #718096;">Enabled</p>
+                            </div>
+                        </div>
+                        <span style="color: #667eea; font-weight: bold;">← Click this row</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3>In the popup that appears:</h3>
+            <div class="visual-box">
+                <p style="font-weight: bold; margin-bottom: 15px;">Email/Password</p>
+                <div style="text-align: left; max-width: 350px; margin: 0 auto;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                        <span>Enable</span>
+                        <div style="width: 50px; height: 28px; background: #667eea; border-radius: 14px; position: relative;">
+                            <div style="width: 22px; height: 22px; background: white; border-radius: 50%; position: absolute; top: 3px; right: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                        </div>
+                    </div>
+                    <p style="color: #68d391; font-size: 0.85em; margin-top: 10px;">↑ Toggle this ON (blue)</p>
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                        <span>Email link (passwordless)</span>
+                        <div style="width: 50px; height: 28px; background: #cbd5e0; border-radius: 14px; position: relative;">
+                            <div style="width: 22px; height: 22px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                        </div>
+                    </div>
+                    <p style="color: #e53e3e; font-size: 0.85em; margin-top: 10px;">↑ Leave this OFF (grey)</p>
+                </div>
+            </div>
+
+            <p>Then click <strong>"Save"</strong></p>
+
+            <div class="success">
+                <strong>Authentication is now enabled!</strong> Users can register and login with email + password.
+            </div>
+        </div>
+
+        <!-- STEP 6 -->
+        <div class="step" id="step6">
+            <div class="step-number">6</div>
+            <h2>🗄️ Create Firestore Database</h2>
+
+            <p>Now create the database where chat messages and couple codes will be stored.</p>
+
+            <h3>Navigate to Firestore:</h3>
+            <div class="visual-box">
+                <div style="text-align: left; max-width: 300px; margin: 0 auto;">
+                    <div style="padding: 10px 15px; background: #f7fafc; border-radius: 8px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px;">
+                        <span>🔨</span> <span style="color: #718096;">Build</span>
+                    </div>
+                    <div style="padding: 10px 15px 10px 45px; background: #f0f4ff; border-radius: 8px; display: flex; align-items: center; gap: 10px; border: 2px solid #667eea;">
+                        <span>🗄️</span> <span style="color: #667eea; font-weight: bold;">Firestore Database</span> <span style="color: #a0aec0; margin-left: auto;">← Click</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3>On the Firestore page:</h3>
+            <div class="visual-box">
+                <p style="color: #718096; margin-bottom: 15px;">You'll see a welcome screen</p>
+                <span class="mock-button">Create database</span>
+                <p style="color: #667eea; margin-top: 10px; font-weight: 600;">↑ Click this!</p>
+            </div>
+
+            <h3>Popup: "Set up your database"</h3>
+            
+            <p><strong>Step A:</strong> Choose "Start in test mode"</p>
+            <div class="visual-box">
+                <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                    <div style="padding: 15px; background: #f0f4ff; border: 2px solid #667eea; border-radius: 10px; margin-bottom: 10px;">
+                        <p style="font-weight: bold; color: #667eea;">🔓 Start in test mode</p>
+                        <p style="font-size: 0.85em; color: #718096;">Anyone can read/write. Good for testing.</p>
+                        <p style="color: #68d391; font-size: 0.85em;">← SELECT THIS ONE ✓</p>
+                    </div>
+                    <div style="padding: 15px; background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 10px;">
+                        <p style="font-weight: bold; color: #718096;">🔒 Start in production mode</p>
+                        <p style="font-size: 0.85em; color: #a0aec0;">Only authenticated users. We'll set this up later.</p>
+                    </div>
+                </div>
+            </div>
+
+            <p>Click <strong>"Next"</strong></p>
+
+            <p><strong>Step B:</strong> Choose location</p>
+            <div class="visual-box">
+                <div class="mock-input" style="text-align: center;">
+                    nam5 (United States) ← Choose closest to you
+                </div>
+                <p style="font-size: 0.85em; color: #718096; margin-top: 10px;">
+                    Choose the region closest to where you live.<br>
+                    Common choices: <code>nam5</code> (US), <code>europe-west</code> (EU), <code>asia-south1</code> (India)
+                </p>
+            </div>
+
+            <p>Click <strong>"Enable"</strong></p>
+
+            <div class="info">
+                Wait ~30 seconds. You'll see "Creating your database..." then it will say "Your database is ready to use."
+            </div>
+
+            <div class="success">
+                <strong>Firestore is now created!</strong> Your app can now store data.
+            </div>
+        </div>
+
+        <!-- STEP 7 -->
+        <div class="step" id="step7">
+            <div class="step-number">7</div>
+            <h2>📝 Create Your .env File</h2>
+
+            <p>Now take the 6 values you copied in Step 4 and create a file called <code>.env</code> in your project's root folder.</p>
+
+            <h3>The .env file should look exactly like this:</h3>
+            <div class="code-block"><span class="comment"># Firebase Configuration</span>
+<span class="comment"># Replace the values below with YOUR values from Step 4</span>
+
+<span class="key">VITE_FIREBASE_API_KEY</span>=<span class="value">AIzaSyBxxxxxxxxxxxxxxxxxxxx</span>
+<span class="key">VITE_FIREBASE_AUTH_DOMAIN</span>=<span class="value">lovelink-app.firebaseapp.com</span>
+<span class="key">VITE_FIREBASE_PROJECT_ID</span>=<span class="value">lovelink-app</span>
+<span class="key">VITE_FIREBASE_STORAGE_BUCKET</span>=<span class="value">lovelink-app.appspot.com</span>
+<span class="key">VITE_FIREBASE_MESSAGING_SENDER_ID</span>=<span class="value">123456789012</span>
+<span class="key">VITE_FIREBASE_APP_ID</span>=<span class="value">1:123456789012:web:abc123def456ghi</span></div>
+
+            <div class="warning">
+                <strong>Important rules:</strong>
+                <ul style="margin-top: 10px; padding-left: 20px; line-height: 2;">
+                    <li>Each variable MUST start with <code>VITE_</code></li>
+                    <li>No spaces around the <code>=</code> sign</li>
+                    <li>No quotes around the values</li>
+                    <li>One variable per line</li>
+                </ul>
+            </div>
+
+            <h3>How to create the .env file:</h3>
+            <div class="table-wrapper">
+                <table>
+                    <tr>
+                        <th>Method</th>
+                        <th>How</th>
+                    </tr>
+                    <tr>
+                        <td><strong>VS Code</strong></td>
+                        <td>Right-click project folder → New File → type <code>.env</code> → paste the content</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Terminal (Mac/Linux)</strong></td>
+                        <td><code>nano .env</code> → paste content → Ctrl+X → Y → Enter</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Terminal (Windows)</strong></td>
+                        <td><code>notepad .env</code> → paste content → Save</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Any text editor</strong></td>
+                        <td>Create a new file, save it as <code>.env</code> (with the dot!) in the project root</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="info">
+                <strong>Where is the "project root"?</strong> It's the folder that contains <code>package.json</code>, <code>src/</code>, and other project files.
+            </div>
+        </div>
+
+        <!-- STEP 8 -->
+        <div class="step" id="step8">
+            <div class="step-number">8</div>
+            <h2>🚀 Deploy to Vercel</h2>
+
+            <p>Now push your code to GitHub and deploy on Vercel.</p>
+
+            <h3>8.1 Push to GitHub:</h3>
+            <div class="code-block"><span class="comment"># In your terminal, inside the project folder:</span>
+git init
+git add .
+git commit -m "Initial commit - LoveLink app"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/lovelink-app.git
+git push -u origin main</div>
+
+            <h3>8.2 Deploy on Vercel:</h3>
+            <ol style="padding-left: 20px; line-height: 2.5;">
+                <li>Go to <strong>vercel.com</strong> → Sign in with GitHub</li>
+                <li>Click <strong>"Add New..."</strong> → <strong>"Project"</strong></li>
+                <li>Find your repository → Click <strong>"Import"</strong></li>
+                <li>Framework Preset: <strong>"Other"</strong> (Vercel auto-detects Vite)</li>
+                <li>Click <strong>"Deploy"</strong></li>
+            </ol>
+
+            <h3>8.3 ⚠️ Add Environment Variables on Vercel:</h3>
+            <p>Before or after deploying, you MUST add your Firebase config to Vercel:</p>
+            
+            <div class="visual-box">
+                <div style="text-align: left; max-width: 500px; margin: 0 auto;">
+                    <p style="color: #718096; margin-bottom: 10px;">Vercel Dashboard → Your Project → Settings → Environment Variables</p>
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 10px; padding: 15px;">
+                        <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
+                            <code style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; color: #667eea; font-size: 0.8em; flex: 1;">VITE_FIREBASE_API_KEY</code>
+                            <span style="color: #a0aec0;">=</span>
+                            <code style="background: #f7fafc; padding: 4px 8px; border-radius: 4px; color: #718096; font-size: 0.8em; flex: 1;">AIzaSyB...</code>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
+                            <code style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; color: #667eea; font-size: 0.8em; flex: 1;">VITE_FIREBASE_AUTH_DOMAIN</code>
+                            <span style="color: #a0aec0;">=</span>
+                            <code style="background: #f7fafc; padding: 4px 8px; border-radius: 4px; color: #718096; font-size: 0.8em; flex: 1;">lovelink-app.firebaseapp.com</code>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
+                            <code style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; color: #667eea; font-size: 0.8em; flex: 1;">VITE_FIREBASE_PROJECT_ID</code>
+                            <span style="color: #a0aec0;">=</span>
+                            <code style="background: #f7fafc; padding: 4px 8px; border-radius: 4px; color: #718096; font-size: 0.8em; flex: 1;">lovelink-app</code>
+                        </div>
+                        <p style="color: #718096; font-size: 0.85em; margin-top: 10px;">... (add all 6 variables)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning">
+                After adding environment variables, you must <strong>redeploy</strong>: Go to Deployments tab → click "..." on latest deployment → "Redeploy"
+            </div>
+        </div>
+
+        <!-- STEP 9 -->
+        <div class="step" id="step9">
+            <div class="step-number">9</div>
+            <h2>🔒 Set Production Security Rules (Final Step)</h2>
+
+            <p>Once everything works, secure your Firestore database:</p>
+
+            <ol style="padding-left: 20px; line-height: 2.2;">
+                <li>Go to Firebase Console → <strong>Firestore Database</strong></li>
+                <li>Click the <strong>"Rules"</strong> tab (top of the page)</li>
+                <li><strong>Delete everything</strong> in the editor</li>
+                <li><strong>Paste this code:</strong></li>
+            </ol>
+
+            <div class="code-block">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    <span class="comment">// Users can only access their own data</span>
+    match /users/{userId} {
+      allow read, write: if request.auth != null 
+        && request.auth.uid == userId;
+    }
+    
+    <span class="comment">// Anyone logged in can read couple codes</span>
+    match /coupleCodes/{code} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+    }
+    
+    <span class="comment">// Chat messages - only logged-in users</span>
+    match /chats/{chatId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    <span class="comment">// Call signaling - only logged-in users</span>
+    match /calls/{callId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}</div>
+
+            <p>Click <strong>"Publish"</strong></p>
+
+            <div class="success">
+                <strong>🎉 YOU'RE DONE!</strong> Your LoveLink app is now fully set up and deployed!
+            </div>
+        </div>
+
+        <!-- TROUBLESHOOTING -->
+        <div class="step">
+            <div class="step-number">?</div>
+            <h2>🆘 Troubleshooting</h2>
+
+            <div class="table-wrapper">
+                <table>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Solution</th>
+                    </tr>
+                    <tr>
+                        <td>"Permission denied" error</td>
+                        <td>Check Firestore is in test mode, or update security rules</td>
+                    </tr>
+                    <tr>
+                        <td>Login doesn't work</td>
+                        <td>Make sure Email/Password is enabled in Authentication → Sign-in method</td>
+                    </tr>
+                    <tr>
+                        <td>"Invalid API key" error</td>
+                        <td>Double-check your .env values match exactly what Firebase gave you</td>
+                    </tr>
+                    <tr>
+                        <td>App works locally but not on Vercel</td>
+                        <td>Make sure you added all 6 env variables in Vercel AND redeployed</td>
+                    </tr>
+                    <tr>
+                        <td>Can't find config values</td>
+                        <td>Firebase Console → ⚙️ Settings → General → scroll to "Your apps"</td>
+                    </tr>
+                    <tr>
+                        <td>Video call doesn't work</td>
+                        <td>Make sure you're on HTTPS (Vercel provides this automatically). Allow camera/mic permissions.</td>
+                    </tr>
+                    <tr>
+                        <td>"App not authorized" error</td>
+                        <td>In Firebase Auth → Settings → add your Vercel domain to "Authorized domains"</td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Adding Vercel domain to Firebase:</h3>
+            <ol style="padding-left: 20px; line-height: 2.2;">
+                <li>Firebase Console → Authentication → Settings</li>
+                <li>Scroll to "Authorized domains"</li>
+                <li>Click "Add domain"</li>
+                <li>Enter your Vercel URL (e.g., <code>lovelink-app.vercel.app</code>)</li>
+                <li>Click "Add"</li>
+            </ol>
+        </div>
+
+        <!-- FINAL CHECKLIST -->
+        <div class="step">
+            <div class="step-number">✓</div>
+            <h2>✅ Final Checklist</h2>
+            
+            <ul class="checklist">
+                <li>Firebase project created</li>
+                <li>Web app registered and config copied</li>
+                <li>Email/Password authentication enabled</li>
+                <li>Firestore database created (test mode)</li>
+                <li>.env file created with all 6 values</li>
+                <li>Code pushed to GitHub</li>
+                <li>Project deployed on Vercel</li>
+                <li>All 6 env variables added to Vercel</li>
+                <li>Vercel domain added to Firebase authorized domains</li>
+                <li>Firestore security rules updated for production</li>
+                <li>Test: Register → Generate code → Partner connects → Chat works → Call works</li>
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; color: white; padding: 40px 20px; opacity: 0.8;">
+            <p>Made with 💕 for LoveLink</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">Need help? Check the README.md in your project</p>
+        </div>
+    </div>
+
+    <script>
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const el = event.target;
+                const original = el.textContent;
+                el.textContent = '✅ Copied!';
+                setTimeout(() => { el.textContent = original; }, 2000);
+            });
+        }
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
