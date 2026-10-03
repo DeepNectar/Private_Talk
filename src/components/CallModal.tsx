@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import Peer, { type MediaConnection } from 'peerjs';
 import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Volume2, AlertCircle } from 'lucide-react';
 import { acceptCall, subscribeToCallStatus, endCall as endCallDb } from '../lib/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface Props { callType: 'video' | 'voice'; currentUserId: string; partnerId: string; isCaller: boolean; onEndCall: () => void; }
 
@@ -18,17 +21,44 @@ export default function CallModal({ callType, currentUserId, partnerId, isCaller
   const callRef = useRef<MediaConnection | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<any>(null);
+  const endedRef = useRef(false);
+
+  // Attach a stream to a <video> element reliably (autoplay can be blocked on mobile).
+  const attach = (el: HTMLVideoElement | null, s: MediaStream) => {
+    if (!el) return;
+    el.srcObject = s;
+    el.onloadedmetadata = () => { el.play().catch(() => {}); };
+    el.play().catch(() => {});
+  };
+
+  const endOnce = async () => {
+    if (endedRef.current) return;
+    endedRef.current = true;
+    cleanup();
+    setStatus('ended');
+    try { await endCallDb(currentUserId, partnerId); } catch {}
+    setTimeout(onEndCall, 800);
+  };
 
   const fmt = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   const getStream = useCallback(async () => {
+    // getUserMedia only exists on HTTPS (or localhost) – this is the #1 reason
+    // calls fail when opening the dev URL from a phone over http://IP-address.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Insecure connection: open the app over HTTPS to use calls');
+      throw new Error('insecure-context');
+    }
     try {
       const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: callType === 'video' ? { width: 640, height: 480 } : false });
       streamRef.current = s;
       if (localRef.current && callType === 'video') localRef.current.srcObject = s;
       return s;
     } catch (e: any) {
-      setError(e.name === 'NotAllowedError' ? 'Camera/mic access denied' : 'No camera/mic found');
+      if (e.name === 'NotAllowedError') setError('Camera/mic permission denied – allow it in browser settings');
+      else if (e.name === 'NotFoundError' || e.name === 'OverconstrainedError') setError('No camera/mic found on this device');
+      else if (e.name === 'NotReadableError') setError('Camera/mic busy in another app');
+      else setError('Could not access camera/microphone');
       throw e;
     }
   }, [callType]);
@@ -40,57 +70,93 @@ export default function CallModal({ callType, currentUserId, partnerId, isCaller
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
-  const end = async () => {
-    cleanup();
-    setStatus('ended');
-    try { await endCallDb(currentUserId, partnerId); } catch {}
-    setTimeout(onEndCall, 800);
-  };
-
   useEffect(() => {
     let mounted = true;
     const init = async () => {
       try {
+        // 1. Get local media FIRST – without this no call can exist.
         const stream = await getStream();
-        const peer = new Peer(`lovelink-${currentUserId}`, { debug: 0 });
+        if (!mounted) { stream.getTracks().forEach(t => t.stop()); return; }
+
+        // 2. Use a RANDOM peer id. The previous code used `lovelink-<userId>` as the
+        //    PeerJS id, which meant both users could only ever hold ONE shared id –
+        //    the second device got an "ID taken" error and calls silently failed.
+        const myId = uuidv4();
+        const peer = new Peer(myId, { debug: 1 });
         peerRef.current = peer;
 
-        peer.on('open', () => {
+        peer.on('error', (e: any) => {
           if (!mounted) return;
-          if (isCaller) {
-            setStatus('ringing');
-            const call = peer.call(`lovelink-${partnerId}`, stream);
-            callRef.current = call;
-            call.on('stream', (remote) => { if (mounted) { setStatus('connected'); if (remoteRef.current) remoteRef.current.srcObject = remote; } });
-            call.on('close', () => { if (mounted) end(); });
-          }
+          console.error('[call] peer error:', e);
+          if (e.type === 'peer-unavailable') setError('Partner is offline – ask them to open LoveLink');
+          else if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error') setError('Network / signaling server problem');
+          else if (e.type === 'browser-incompatible') setError('Browser does not support WebRTC');
+          else setError('Call error: ' + (e.type || e.message || 'unknown'));
+          setTimeout(endOnce, 2000);
         });
 
         peer.on('call', (incoming) => {
           if (!mounted) return;
           callRef.current = incoming;
           setStatus('connecting');
-          acceptCall(currentUserId, partnerId);
+          acceptCall(currentUserId, partnerId).catch(() => {});
           incoming.answer(stream);
-          incoming.on('stream', (remote) => { if (mounted) { setStatus('connected'); if (remoteRef.current) remoteRef.current.srcObject = remote; } });
-          incoming.on('close', () => { if (mounted) end(); });
+          incoming.on('stream', (remote) => {
+            if (!mounted) return;
+            setStatus('connected');
+            attach(remoteRef.current, remote);
+          });
+          incoming.on('close', () => { if (mounted) endOnce(); });
         });
 
-        peer.on('error', (e) => {
+        // 3. Advertise our current PeerJS id in Firestore so the partner can dial it.
+        //    (Previously both sides tried to dial a fixed id that was never registered.)
+        await setDoc(doc(db, 'users', currentUserId), {
+          peerId: myId,
+          onlineAt: serverTimestamp(),
+        }, { merge: true });
+
+        peer.on('open', () => {
           if (!mounted) return;
-          if (e.type === 'peer-unavailable') setError('Partner not available');
-          setTimeout(end, 1500);
+          if (isCaller) {
+            setStatus('ringing');
+            const dial = async () => {
+              try {
+                const snap = await getDoc(doc(db, 'users', partnerId));
+                const partnerPeerId: string | undefined = snap.data()?.peerId;
+                if (!partnerPeerId) {
+                  setError('Partner is not online – they must open the app first');
+                  setTimeout(endOnce, 2500);
+                  return;
+                }
+                const call = peer.call(partnerPeerId, stream, { metadata: { type: callType } });
+                callRef.current = call;
+                call.on('stream', (remote) => {
+                  if (!mounted) return;
+                  setStatus('connected');
+                  attach(remoteRef.current, remote);
+                });
+                call.on('close', () => { if (mounted) endOnce(); });
+                call.on('error', () => { if (mounted) { setError('Call failed'); setTimeout(endOnce, 1500); } });
+              } catch {
+                if (mounted) { setError('Could not start call'); setTimeout(endOnce, 1500); }
+              }
+            };
+            dial();
+          }
         });
 
         if (isCaller) {
           const unsub = subscribeToCallStatus(currentUserId, partnerId, (d) => {
             if (!mounted) return;
             if (d?.status === 'accepted') setStatus('connecting');
-            else if (d?.status === 'ended') end();
+            else if (d?.status === 'ended') endOnce();
           });
           return () => unsub();
         }
-      } catch { if (mounted && !error) setError('Failed to start call'); }
+      } catch {
+        if (mounted) setError('Failed to access camera/microphone');
+      }
     };
     init();
     return () => { mounted = false; cleanup(); };
@@ -137,7 +203,7 @@ export default function CallModal({ callType, currentUserId, partnerId, isCaller
           </div>
         )}
 
-        {callType === 'video' && status === 'connected' && (
+        {callType === 'video' && (
           <div className="absolute bottom-20 right-4 w-28 h-40 rounded-xl overflow-hidden shadow-2xl border-2 border-white/20">
             <video ref={localRef} autoPlay playsInline muted className={`w-full h-full object-cover ${videoOff ? 'hidden' : ''} transform scale-x-[-1]`} />
             {videoOff && <div className="w-full h-full bg-gray-700 flex items-center justify-center"><VideoOff className="w-6 h-6 text-white/50" /></div>}
@@ -152,7 +218,7 @@ export default function CallModal({ callType, currentUserId, partnerId, isCaller
       <div className="bg-gray-900/90 border-t border-white/10 px-6 py-4">
         <div className="flex items-center justify-center gap-3">
           <button onClick={toggleMute} className={`w-12 h-12 rounded-full flex items-center justify-center ${muted ? 'bg-red-500 text-white' : 'bg-white/10 text-white'}`}>{muted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}</button>
-          <button onClick={end} className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg"><PhoneOff className="w-6 h-6" /></button>
+          <button onClick={endOnce} className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg"><PhoneOff className="w-6 h-6" /></button>
           {callType === 'video' ? (
             <button onClick={toggleVideo} className={`w-12 h-12 rounded-full flex items-center justify-center ${videoOff ? 'bg-red-500 text-white' : 'bg-white/10 text-white'}`}>{videoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}</button>
           ) : (

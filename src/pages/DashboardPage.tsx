@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, LogOut, Phone, Video, Copy, Link2, CheckCircle, AlertCircle, Loader2, Shield, Users, MessageCircle, BookHeart, Mail, Sparkles, Calendar } from 'lucide-react';
+import { Heart, LogOut, Phone, Video, Download, Share2, Copy, Link2, CheckCircle, AlertCircle, Loader2, Shield, Users, MessageCircle, BookHeart, Mail, Sparkles, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { generateAndSaveCoupleCode, connectWithCode, initiateCall, subscribeToIncomingCalls, endCall, logoutUser, subscribeToMessages } from '../lib/firebase';
+import { canInstall, isStandalone, promptInstall, subscribeToInstallState } from '../lib/pwa';
 import ChatWindow from '../components/ChatWindow';
 import CallModal from '../components/CallModal';
 import Memories from '../components/Memories';
@@ -26,6 +27,21 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>('chat');
   const [msgCount, setMsgCount] = useState(0);
   const [firstDate, setFirstDate] = useState<Date | null>(null);
+  const [installable, setInstallable] = useState(false);
+  const [iosHint, setIosHint] = useState(false);
+
+  useEffect(() => {
+    if (isStandalone()) return;
+    const ua = navigator.userAgent;
+    setIosHint(/iPad|iPhone|iPod/.test(ua) || (ua.includes('Mac') && 'ontouchend' in document));
+    setInstallable(canInstall());
+    return subscribeToInstallState(() => setInstallable(canInstall()));
+  }, []);
+
+  const installApp = async () => {
+    const r = await promptInstall();
+    if (r === 'unavailable') setIosHint(true); // iOS / unsupported: show manual instructions
+  };
 
   useEffect(() => { if (!loading && !user) navigate('/'); }, [user, loading, navigate]);
   useEffect(() => { if (userData) { setCode(userData.coupleCode || ''); setPartnerId(userData.partnerId || null); setConnected(!!userData.partnerId); } }, [userData]);
@@ -88,9 +104,25 @@ export default function DashboardPage() {
               <p className="text-xs text-gray-500">{connected ? <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>Connected</span> : 'Not connected'}</p>
             </div>
           </div>
-          <button onClick={async () => { await logoutUser(); navigate('/'); }} className="p-2 text-gray-400 hover:text-rose-500 rounded-xl"><LogOut className="w-5 h-5" /></button>
+          <div className="flex items-center gap-2">
+            {!isStandalone() && (installable || iosHint) && (
+              <button onClick={installApp} className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-full text-xs font-medium shadow-sm">
+                <Download className="w-3.5 h-3.5" />Install App
+              </button>
+            )}
+            <button onClick={async () => { await logoutUser(); navigate('/'); }} className="p-2 text-gray-400 hover:text-rose-500 rounded-xl"><LogOut className="w-5 h-5" /></button>
+          </div>
         </div>
       </header>
+
+      {!isStandalone() && iosHint && !installable && (
+        <div className="max-w-4xl mx-auto w-full px-4 pt-3">
+          <div className="bg-white/80 border border-pink-100 rounded-2xl px-4 py-2.5 text-xs text-gray-600 flex items-start justify-between gap-3">
+            <p><span className="font-semibold text-rose-500">Install on your iPhone:</span> tap the <Share2 className="w-3.5 h-3.5 inline" /> Share button in Safari, then choose <span className="font-semibold">“Add to Home Screen”</span>.</p>
+            <button onClick={() => setIosHint(false)} className="text-gray-400 shrink-0">×</button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 max-w-4xl mx-auto w-full p-4 flex flex-col min-h-0">
         {!connected ? (
