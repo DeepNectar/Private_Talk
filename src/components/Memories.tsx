@@ -1,9 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, Plus, X, Calendar, Sparkles, BookHeart } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Heart, X, Calendar, Sparkles, BookHeart } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import LiveCounter, { useElapsed } from './LiveCounter';
 
 interface Memory { id: string; title: string; description: string; date: string; }
+
+/** Parse a stored memory date ("YYYY-MM-DD" or ISO/timestamp-ish) into epoch ms. */
+function toMs(date: string): number | null {
+  if (!date) return null;
+  const t = new Date(date.length === 10 ? `${date}T00:00:00` : date).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+/** Live "X days, HH:MM:SS ago" line that ticks every second. */
+function LiveSince({ date }: { date: string }) {
+  const e = useElapsed(toMs(date));
+  if (!e) return null;
+  return (
+    <p className="text-[10px] font-mono tabular-nums text-rose-500 flex items-center gap-1 mt-0.5">
+      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shrink-0" />
+      {e.days > 0 ? `${e.days}d ` : ''}
+      {String(e.hours).padStart(2, '0')}:{String(e.minutes).padStart(2, '0')}:{String(e.seconds).padStart(2, '0')} ago
+    </p>
+  );
+}
 
 export default function Memories({ userId, partnerId }: { userId: string; partnerId: string }) {
   const [mems, setMems] = useState<Memory[]>([]);
@@ -12,6 +33,14 @@ export default function Memories({ userId, partnerId }: { userId: string; partne
   const [desc, setDesc] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const chatId = [userId, partnerId].sort().join('_');
+
+  // Relationship start = earliest memory date (falls back to newest so it always ticks).
+  const firstMs = useMemo(() => {
+    if (!mems.length) return null;
+    const all = mems.map(m => toMs(m.date)).filter((v): v is number => !!v);
+    if (!all.length) return null;
+    return Math.min(...all);
+  }, [mems]);
 
   useEffect(() => {
     return onSnapshot(query(collection(db, 'chats', chatId, 'memories'), orderBy('date', 'desc')), (s) => {
@@ -42,6 +71,8 @@ export default function Memories({ userId, partnerId }: { userId: string; partne
       )}
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <LiveCounter since={firstMs} label={firstMs ? 'Together for' : 'Live counter'} />
+
         {!mems.length ? (
           <div className="text-center py-12"><BookHeart className="w-12 h-12 text-rose-300 mx-auto mb-2" /><p className="text-gray-400 text-sm">No memories yet 💕</p></div>
         ) : mems.map(m => (
@@ -52,6 +83,7 @@ export default function Memories({ userId, partnerId }: { userId: string; partne
             </div>
             {m.description && <p className="text-xs text-gray-600 mb-1">{m.description}</p>}
             <p className="text-[10px] text-gray-400 flex items-center gap-1"><Calendar className="w-2.5 h-2.5" />{new Date(m.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <LiveSince date={m.date} />
           </div>
         ))}
       </div>
